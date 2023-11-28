@@ -1,0 +1,20 @@
+1-
+The columns which consist of more than one value violate 1NF rule.
+In this case food_code column and food_description column violates the 1NF rule.
+One way to solve taht problem is to create new table associated with required columns in this table.
+
+2-
+Rather then extracting , we should create other tables for example,
+we should have an apart table only for venue info,
+and the exact thing for food info.
+
+3-
+3NF rule builds on the concepts of 1NF and 2NF and additionally
+non-prime attributes must depend on the primary key directly.
+To manage that first we must have everthing done as mantioned about in the
+answers of 1-2. And then we must calrify which columns are primary keys,
+for example member_id, member_name and member_address should be in an apart table
+and member_id should be our primary key that links with other tables.
+We should have 3 other tables for dinner, venue, and food.
+Dinner_id, venue_code and food_code should be our primary keys that should be linked
+to member_id for example.
