@@ -1,52 +1,58 @@
 const mysql = require("mysql");
+
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "hyfuser",
   password: "hyfpassword",
   database: "trial",
 });
-connection.connect();
 
-connection.query("use trial", (error, results, fields) => {
-  if (error) throw error;
-  console.log(results);
+function executeQuery(query) {
+  connection.query(query, (error, results, fields) => {
+    if (error) {
+      console.error(`Error executing query: ${query}`, error);
+      connection.end();
+      return;
+    }
+
+    console.log("Query executed successfully");
+  });
+}
+
+connection.connect((err) => {
+  if (err) {
+    console.error("Error connecting to database:", err);
+    connection.end();
+    return;
+  }
+  console.log("Connected to database");
 });
-connection.query(
-  `
-        create table if not exists authors(
-            author_id int auto_increment primary key,
-            author_name varchar(255),
-            university varchar(255),
-            date_of_birth varchar(255),
-            h_index int,
-            gender varchar(255)
-        )
-    `,
-  (error, results, fields) => {
-    if (error) throw error;
-    console.log(results);
-  }
-);
-connection.query(
-  `
-        alter table authors
-        add column mentor int
-    `,
-  (error, results, fields) => {
-    if (error) throw error;
-    console.log(results);
-  }
-);
-connection.query(
-  `
-        alter table authors
-        add constraint fk_mentor
-        foreign key (mentor) references authors(author_id)             
-    `,
-  (error, results, fields) => {
-    if (error) throw error;
-    console.log(results);
-  }
-);
 
-connection.end();
+executeQuery("use trial");
+executeQuery(`
+  CREATE TABLE IF NOT EXISTS authors (
+    author_id INT AUTO_INCREMENT PRIMARY KEY,
+    author_name VARCHAR(255),
+    university VARCHAR(255),
+    date_of_birth DATE,
+    h_index INT,
+    gender VARCHAR(255)
+  )
+`);
+executeQuery(`
+  ALTER TABLE authors
+  ADD COLUMN mentor INT
+`);
+executeQuery(`
+  ALTER TABLE authors
+  ADD CONSTRAINT fk_mentor
+  FOREIGN KEY (mentor) REFERENCES authors(author_id)
+`);
+
+connection.end((err) => {
+  if (err) {
+    console.error("Error closing database connection:", err);
+    return;
+  }
+  console.log("Connection closed");
+});
