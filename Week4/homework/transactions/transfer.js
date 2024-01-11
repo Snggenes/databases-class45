@@ -1,53 +1,72 @@
 const mongoose = require("mongoose");
-const { Accounts, AccountChanges } = require("./models");
+const { Accounts } = require("./models");
 
-async function transferSession() {
+require("dotenv").config();
+
+mongoose.connect(process.env.MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+async function transfer(fromAccountNumber, toAccountNumber, amount, remark) {
   try {
-    await mongoose.connect(process.env.MONGO_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    const fromAccount = await Accounts.findOne({
+      account_number: fromAccountNumber,
+    });
+    const toAccount = await Accounts.findOne({
+      account_number: toAccountNumber,
     });
 
-    const session = await mongoose.startSession();
+    if (fromAccount.balance < amount) {
+      throw new Error("Insufficient funds in the 'from' account.");
+    }
 
-    await session.withTransaction(async () => {
-      await Accounts.updateOne(
-        { account_number: 101 },
-        { $inc: { balance: -1000 } }
-      );
+    const fromChangeNumber = fromAccount.latest_change_number + 1;
+    const toChangeNumber = toAccount.latest_change_number + 1;
 
-      await Accounts.updateOne(
-        { account_number: 102 },
-        { $inc: { balance: 1000 } }
-      );
+    fromAccount.balance -= amount;
+    toAccount.balance += amount;
 
-      const changes = await AccountChanges.insertMany([
-        {
-          change_number: 1,
-          account_number: 101,
-          amount: -1000,
-          changed_date: "2023-11-27",
-          remark: "to account 102",
-        },
-        {
-          change_number: 2,
-          account_number: 102,
-          amount: 1000,
-          changed_date: "2023-11-27",
-          remark: "from account 101",
-        },
-      ]);
-
-      console.log("Inserted changes:", changes);
+    fromAccount.account_changes.push({
+      change_number: fromChangeNumber,
+      amount: -amount,
+      changed_date: new Date(),
+      remark,
     });
 
-    await session.commitTransaction();
-    session.endSession();
+    toAccount.account_changes.push({
+      change_number: toChangeNumber,
+      amount,
+      changed_date: new Date(),
+      remark,
+    });
+
+    fromAccount.latest_change_number = fromChangeNumber;
+    toAccount.latest_change_number = toChangeNumber;
+
+    await fromAccount.save();
+    await toAccount.save();
+
+    console.log(
+      `Transfer successful: ${amount} from account ${fromAccountNumber} to ${toAccountNumber}`
+    );
   } catch (error) {
-    console.error("Error:", error);
-  } finally {
-    await mongoose.connection.close();
+    console.error("Transfer failed:", error.message);
   }
 }
 
-transferSession();
+async function testTransfer() {
+  await transfer(101, 102, 1000, "Transfer from account 101 to 102");
+}
+
+async function run() {
+  try {
+    await testTransfer();
+  } catch (error) {
+    console.error("Error during test:", error);
+  } finally {
+    mongoose.connection.close();
+  }
+}
+
+run();
