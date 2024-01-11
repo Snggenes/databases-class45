@@ -32,17 +32,17 @@ async function fetchPopulationByYear(country) {
 }
 
 async function fetchContinentInfoByYearAge(year, age) {
-  const continents = [
-    "AFRICA",
-    "ASIA",
-    "EUROPE",
-    "LATIN AMERICA AND THE CARIBBEAN",
-    "NORTHERN AMERICA",
-    "OCEANIA",
-  ];
-
   try {
-    const result = await LandModel.aggregate([
+    const continents = [
+      'AFRICA',
+      'ASIA',
+      'EUROPE',
+      'LATIN AMERICA AND THE CARIBBEAN',
+      'NORTHERN AMERICA',
+      'OCEANIA',
+    ];
+
+    const query = [
       {
         $match: {
           $and: [
@@ -53,27 +53,22 @@ async function fetchContinentInfoByYearAge(year, age) {
         },
       },
       {
-        $group: {
-          _id: "$Country",
-          Country: { $first: "$Country" },
-          Year: { $first: "$Year" },
-          Age: { $first: "$Age" },
-          M: { $sum: "$M" },
-          F: { $sum: "$F" },
-          TotalPopulation: { $sum: { $add: ["$M", "$F"] } },
+        $addFields: {
+          TotalPopulation: {
+            $add: ['$M', '$F'],
+          },
         },
       },
-      {
-        $sort: { Country: 1 },
-      },
-    ]);
+      { $sort: { Country: 1 } },
+    ];
 
+    const result = await LandModel.aggregate(query);
     console.log(result);
   } catch (error) {
-    console.error("Error:", error);
+    console.error('Error retrieving continent info');
     throw error;
   }
-}
+};
 
 async function main() {
   try {
